@@ -1,7 +1,63 @@
+const multer = require('multer');
+const sharp = require('sharp');
 const Tour = require('../models/tourModel');
-const APIFeatures = require('../utils/apiFeatures');
-const catchAsync = require('../utils/catchAsync');
 const AppError = require('../utils/appError');
+// const APIFeatures = require('../utils/apiFeatures');
+const catchAsync = require('../utils/catchAsync');
+// const AppError = require('../utils/appError');
+const factory = require('./handlerFactory');
+
+const multerStorage = multer.memoryStorage();
+
+const multerFilter = (req, file, cb) => {
+  if (file.mimetype.startsWith('image')) {
+    cb(null, true);
+  } else {
+    cb(new AppError('not an image!! please upload image file', 400), false);
+  }
+};
+
+const upload = multer({
+  storage: multerStorage,
+  fileFilter: multerFilter,
+});
+
+exports.uploadTourPhoto = upload.fields([
+  { name: 'imageCover', maxCount: 1 },
+  { name: 'images', maxCount: 3 },
+]);
+
+exports.resizeTourPhoto = catchAsync(async (req, res, next) => {
+  console.log(req.files);
+  if (!req.files.imageCover || !req.files.images) return next();
+
+  //1) imageCover
+  req.body.imageCover = `tour-${req.params.id}-${Date.now()}.jpeg`;
+
+  await sharp(req.files.imageCover[0].buffer)
+    .resize(2000, 1333)
+    .toFormat('jpeg')
+    .jpeg({ quality: 90 })
+    .toFile(`public/img/tours/${req.body.imageCover}`);
+
+  // 2) Images
+  req.body.images = [];
+  await Promise.all(
+    req.files.images.map(async (file, i) => {
+      const filename = `tour-${req.params.id}-${Date.now()}-${i + 1}.jpeg`;
+
+      await sharp(file.buffer)
+        .resize(2000, 1333)
+        .toFormat('jpeg')
+        .jpeg({ quality: 90 })
+        .toFile(`public/img/tours/${filename}`);
+
+      req.body.images.push(filename);
+    })
+  );
+
+  next();
+});
 
 //Top 5 cheap Tour
 exports.aliseTopTour = (req, res, next) => {
@@ -11,128 +67,15 @@ exports.aliseTopTour = (req, res, next) => {
   next();
 };
 
-exports.getAllTours = catchAsync(async (req, res, next) => {
-  //Build Query
+exports.getAllTours = factory.getAll(Tour);
 
-  // Filtering
-  // const queryObj = { ...req.query };
-  // const excludeFeild = ['page', 'limit', 'sort', 'feilds'];
-  // excludeFeild.forEach((el) => delete queryObj[el]);
+exports.getTour = factory.getOne(Tour, { path: 'reviews' });
 
-  // //Advance Filtering
-  // let queryStr = JSON.stringify(queryObj);
-  // queryStr = queryStr.replace(/\b(gt|gte|lt|lte)\b/g, (match) => `$${match}`);
-  // //console.log(JSON.parse(queryStr));
+exports.createTour = factory.createOne(Tour);
 
-  // let query = Tour.find(JSON.parse(queryStr));
+exports.updateTour = factory.updateOne(Tour);
 
-  //Sorting
-  // if (req.query.sort) {
-  //   const sortBy = req.query.sort.split(',').join(' ');
-  //   console.log(sortBy);
-  //   query = query.sort(sortBy);
-  // } else {
-  //   query = query.sort('-createAt');
-  // }
-
-  //Feild Limitiing
-  // if (req.query.feilds) {
-  //   const feilds = req.query.feilds.split(',').join(' ');
-  //   query = query.select(feilds);
-  // } else {
-  //   query = query.select('-__v');
-  // }
-
-  //Pagination
-  // const page = req.query.page * 1 || 1;
-  // const limit = req.query.limit * 1 || 100;
-  // const skip = (page - 1) * limit;
-  // query = query.skip(skip).limit(limit);
-
-  // if (req.query.page) {
-  //   const numberTour = await Tour.countDocuments();
-  //   if (skip >= numberTour) throw new Error('this page does not Exist');
-  // }
-  // const query = Tour.find()
-  //   .where('duration')
-  //   .equals(5)
-  //   .where('difficulty')
-  //   .equals('easy');
-
-  //Execute Query
-  const features = new APIFeatures(Tour.find(), req.query)
-    .filtering()
-    .sorting()
-    .limitFeilds()
-    .pagination();
-  const tours = await features.query;
-
-  //Send Responce
-  res.status(200).json({
-    status: 'success',
-    results: tours.length,
-    data: {
-      tours,
-    },
-  });
-});
-
-exports.getTour = catchAsync(async (req, res, next) => {
-  const tour = await Tour.findById(req.params.id);
-
-  if (!tour) {
-    return next(new AppError('No Tour found with this id', 404));
-  }
-
-  res.status(200).json({
-    status: 'success',
-    data: {
-      tour,
-    },
-  });
-});
-
-exports.createTour = catchAsync(async (req, res, next) => {
-  const newTour = await Tour.create(req.body);
-
-  res.status(201).json({
-    status: 'success',
-    data: {
-      tour: newTour,
-    },
-  });
-});
-
-exports.updateTour = catchAsync(async (req, res, next) => {
-  const tour = await Tour.findByIdAndUpdate(req.params.id, req.body, {
-    new: true,
-    runValidators: true,
-  });
-
-  if (!tour) {
-    return next(new AppError('No Tour found with this id', 404));
-  }
-
-  res.status(200).json({
-    status: 'success',
-    data: {
-      tour,
-    },
-  });
-});
-
-exports.deleteTour = catchAsync(async (req, res, next) => {
-  const tour = await Tour.findByIdAndDelete(req.params.id);
-
-  if (!tour) {
-    return next(new AppError('No Tour found with this id', 404));
-  }
-
-  res.status(204).json({
-    status: 'success',
-    data: null,
-  });
-});
+exports.deleteTour = factory.deleteOne(Tour);
 
 exports.getTourStats = catchAsync(async (req, res, next) => {
   const stats = await Tour.aggregate([
@@ -201,6 +144,36 @@ exports.getMonthlyPlan = catchAsync(async (req, res, next) => {
     status: 'success',
     data: {
       plan,
+    },
+  });
+});
+
+// /tours-within/distance=233&center=45,45&unit=mi
+//  /tours-within/233/center/34.120267,-118.138490/unit/mi
+
+exports.getTourWithIn = catchAsync(async (req, res, next) => {
+  const { distance, latlng, unit } = req.params;
+  const [lat, lng] = latlng.split(',');
+
+  const radius = unit === 'mi' ? distance / 3963.2 : distance / 6378.1;
+  if (!lat || !lng) {
+    next(
+      new AppError(
+        'Please provide latitute and longitude in format of lat,lng',
+        400
+      )
+    );
+  }
+
+  const tours = await Tour.find({
+    startLocation: { $geoWithin: { $centerSphere: [[lng, lat], radius] } },
+  });
+
+  res.status(200).json({
+    status: 'success',
+    results: tours.length,
+    data: {
+      data: tours,
     },
   });
 });
