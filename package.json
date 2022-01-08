@@ -14,7 +14,9 @@
   "author": "shivamsingh",
   "license": "ISC",
   "devDependencies": {
+    "@types/html-to-text": "^8.0.1",
     "@types/multer": "^1.4.7",
+    "@types/pug": "^2.0.6",
     "@types/sharp": "^0.29.5",
     "eslint": "^8.3.0",
     "eslint-config-airbnb": "^19.0.1",
@@ -35,6 +37,7 @@
     "express-rate-limit": "^6.0.3",
     "helmet": "^4.6.0",
     "hpp": "^0.2.3",
+    "html-to-text": "^8.1.0",
     "jsonwebtoken": "^8.5.1",
     "mongoose": "^6.0.14",
     "morgan": "^1.10.0",
