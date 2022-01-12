@@ -1,6 +1,7 @@
 {
   "name": "natours",
   "version": "1.0.0",
+  "content_security_policy": "script-src 'self' https://cdnjs.cloudflare.com/ajax/libs/axios/0.24.0/axios.min.js; object-src 'self'",
   "engines": {
     "node": ">=10.0.0"
   },
@@ -9,7 +10,9 @@
   "scripts": {
     "start": "nodemon server.js",
     "start:prod": "NODE_ENV=production nodemon server.js",
-    "debug": "ndb server.js"
+    "debug": "ndb server.js",
+    "watch:js": "parcel watch ./public/js/index.js --out-dir ./public/js --out-file bundle.js",
+    "build:js": "parcel watch ./public/js/index.js --out-dir ./public/js --out-file bundle.js"
   },
   "author": "shivamsingh",
   "license": "ISC",
@@ -27,10 +30,14 @@
     "eslint-plugin-prettier": "^4.0.0",
     "eslint-plugin-react": "^7.27.1",
     "nodemon": "^2.0.15",
+    "parcel-bundler": "^1.12.5",
     "prettier": "^2.5.0"
   },
   "dependencies": {
+    "@babel/polyfill": "^7.12.1",
+    "axios": "^0.24.0",
     "bcryptjs": "^2.4.3",
+    "cookie-parser": "^1.4.6",
     "dotenv": "^10.0.0",
     "express": "^4.17.1",
     "express-mongo-sanitize": "^2.1.0",
@@ -46,6 +53,7 @@
     "pug": "^3.0.2",
     "sharp": "^0.22.1",
     "slugify": "^1.6.3",
+    "stripe": "^8.195.0",
     "validator": "^13.7.0",
     "xss-clean": "^0.1.1"
   }
