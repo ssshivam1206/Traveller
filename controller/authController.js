@@ -36,6 +36,14 @@ const createSendToken = (user, statusCode, res) => {
   });
 };
 
+exports.logout = (req, res, next) => {
+  res.cookie('jwt', 'loggedout', {
+    expires: new Date(Date.now() + 10 * 1000),
+    httpOnly: true,
+  });
+  res.status(200).json({ status: 'success' });
+};
+
 exports.signup = catchAsync(async (req, res, next) => {
   const newUser = await User.create({
     name: req.body.name,
@@ -74,6 +82,8 @@ exports.protect = catchAsync(async (req, res, next) => {
     req.headers.authorization.startsWith('Bearer')
   ) {
     token = req.headers.authorization.split(' ')[1];
+  } else if (req.cookies.jwt) {
+    token = req.cookies.jwt;
   }
   //console.log(token);
 
@@ -94,8 +104,37 @@ exports.protect = catchAsync(async (req, res, next) => {
 
   // GRANT ACCESS TO PROTECTED ROUTE
   req.user = currentUser;
+  res.locals.user = currentUser;
   next();
 });
+
+// only for rendered page , No Error
+exports.loggedIn = async (req, res, next) => {
+  if (req.cookies.jwt) {
+    try {
+      //1. verify token
+      const decode = await promisify(jwt.verify)(
+        req.cookies.jwt,
+        process.env.JWT_SECRET
+      );
+
+      //2. Check User Exist or Not
+      const currentUser = await User.findById(decode.id);
+      if (!currentUser) return next();
+      //3. Check if user change password after token set
+      if (currentUser.changedPasswordAfter(decode.iat)) {
+        return next();
+      }
+
+      // GRANT ACCESS TO PROTECTED ROUTE
+      res.locals.user = currentUser;
+      return next();
+    } catch (err) {
+      return next();
+    }
+  }
+  next();
+};
 
 exports.restrictTo = (...roles) => {
   return (req, res, next) => {
