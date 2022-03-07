@@ -9,10 +9,11 @@ const hpp = require('hpp');
 
 const AppError = require('./utils/appError');
 const ErrorHandler = require('./controller/errorController');
-const tourRouter = require('./routes/tourRouter');
-const userRouter = require('./routes/userRouter');
-const reviewRouter = require('./routes/reviewRouter');
-const viewsRouter = require('./routes/viewsrouter');
+const tourRouter = require('./routes/tourRoutes');
+const userRouter = require('./routes/userRoutes');
+const reviewRouter = require('./routes/reviewRoutes');
+const viewsRouter = require('./routes/viewsRoutes');
+const bookingRouter = require('./routes/bookingRoutes');
 
 const app = express();
 
@@ -81,6 +82,7 @@ app.use('/', viewsRouter);
 app.use('/api/v1/tours', tourRouter);
 app.use('/api/v1/users', userRouter);
 app.use('/api/v1/reviews', reviewRouter);
+app.use('/api/v1/bookings', bookingRouter);
 
 app.all('*', (req, res, next) => {
   // const err = new Error(`can't find ${req.originalUrl} on this server`);
